@@ -8,7 +8,6 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Статик papkani ulash
 app.use(express.static(path.join(__dirname, 'public')));
 
 const server = http.createServer(app);
@@ -19,19 +18,12 @@ const io = new Server(server, {
 let attendanceRecords = [];
 let naryadRecords = []; 
 let students = []; 
-let teachers = []; // O'qituvchilar (Login va parollar bilan)
+let teachers = []; 
 
-// 7 kundan eski ma'lumotlarni tozalash
 function cleanOldRecords() {
     const oneWeekAgo = Date.now() - (7 * 24 * 60 * 60 * 1000);
-    attendanceRecords = attendanceRecords.filter(item => {
-        const itemTime = new Date(item.time).getTime();
-        return itemTime >= oneWeekAgo;
-    });
-    naryadRecords = naryadRecords.filter(item => {
-        const itemTime = new Date(item.time).getTime();
-        return itemTime >= oneWeekAgo;
-    });
+    attendanceRecords = attendanceRecords.filter(item => new Date(item.time).getTime() >= oneWeekAgo);
+    naryadRecords = naryadRecords.filter(item => new Date(item.time).getTime() >= oneWeekAgo);
 }
 
 // --- DAVOMAT API ---
@@ -61,13 +53,10 @@ app.get('/api/attendance', (req, res) => {
     res.json(attendanceRecords);
 });
 
-// Davomat yozuvini o'chirish
 app.delete('/api/attendance/:unique_id', (req, res) => {
     const { unique_id } = req.params;
     const index = attendanceRecords.findIndex(r => r.unique_id === unique_id);
-    if (index === -1) {
-        return res.status(404).json({ success: false, message: "Ma'lumot topilmadi" });
-    }
+    if (index === -1) return res.status(404).json({ success: false, message: "Topilmadi" });
     attendanceRecords.splice(index, 1);
     io.emit('attendance_deleted', unique_id);
     res.json({ success: true });
@@ -76,11 +65,7 @@ app.delete('/api/attendance/:unique_id', (req, res) => {
 // --- NARYADCHILAR API ---
 app.post('/api/naryad', (req, res) => {
     const data = req.body;
-    const naryadRecord = {
-        unique_id: `naryad_${Date.now()}_${Math.random()}`,
-        ...data
-    };
-    
+    const naryadRecord = { unique_id: `naryad_${Date.now()}_${Math.random()}`, ...data };
     naryadRecords.unshift(naryadRecord);
     cleanOldRecords();
     io.emit('live_naryad', naryadRecord);
@@ -92,26 +77,21 @@ app.get('/api/naryad', (req, res) => {
     res.json(naryadRecords);
 });
 
-// Naryad yozuvini o'chirish
 app.delete('/api/naryad/:unique_id', (req, res) => {
     const { unique_id } = req.params;
     const index = naryadRecords.findIndex(r => r.unique_id === unique_id);
-    if (index === -1) {
-        return res.status(404).json({ success: false, message: "Ma'lumot topilmadi" });
-    }
+    if (index === -1) return res.status(404).json({ success: false, message: "Topilmadi" });
     naryadRecords.splice(index, 1);
     io.emit('naryad_deleted', unique_id);
     res.json({ success: true });
 });
 
-// --- O'QITUVCHILAR API ---
+// --- O'QITUVCHILAR API (Direktordan qo'shish va ilovadan kirish) ---
 app.post('/api/teachers/register', (req, res) => {
     const { login, password, time } = req.body;
-    if (!login) {
-        return res.status(400).json({ success: false, message: "Login kiritilmadi" });
-    }
+    if (!login) return res.status(400).json({ success: false, message: "Login kiritilmadi" });
 
-    const existing = teachers.find(t => t.login === login.trim());
+    let existing = teachers.find(t => t.login === login.trim());
     if (!existing) {
         const newTeacher = {
             id: Date.now().toString(),
@@ -122,26 +102,41 @@ app.post('/api/teachers/register', (req, res) => {
         teachers.push(newTeacher);
         io.emit('teacher_added', newTeacher);
     } else {
-        existing.password = password ? password.trim() : existing.password;
+        if (password) existing.password = password.trim();
+    }
+    res.status(200).json({ success: true });
+});
+
+app.post('/api/teachers', (req, res) => {
+    const { login, password } = req.body;
+    if (!login || !password) return res.status(400).json({ success: false, message: "Login va parol kiritilishi shart" });
+
+    if (teachers.some(t => t.login === login.trim())) {
+        return res.status(400).json({ success: false, message: "Bu login band!" });
     }
 
-    res.status(200).json({ success: true });
+    const newTeacher = {
+        id: Date.now().toString(),
+        login: login.trim(),
+        password: password.trim(),
+        time: new Date().toISOString()
+    };
+    teachers.push(newTeacher);
+    io.emit('teacher_added', newTeacher);
+    res.status(201).json({ success: true, teacher: newTeacher });
 });
 
 app.get('/api/teachers', (req, res) => {
     res.json(teachers);
 });
 
-// O'qituvchini o'chirish
 app.delete('/api/teachers/:id', (req, res) => {
     const { id } = req.params;
     const index = teachers.findIndex(t => t.id === id || t.login === id);
-    if (index === -1) {
-        return res.status(404).json({ success: false, message: "O'qituvchi topilmadi" });
-    }
-    const deleted = teachers.splice(index, 1)[0];
+    if (index === -1) return res.status(404).json({ success: false, message: "O'qituvchi topilmadi" });
+    teachers.splice(index, 1);
     io.emit('teacher_deleted', id);
-    res.json({ success: true, deleted });
+    res.json({ success: true });
 });
 
 const PORT = process.env.PORT || 3000;

@@ -12,9 +12,7 @@
             from { opacity: 0; transform: translateY(15px); }
             to { opacity: 1; transform: translateY(0); }
         }
-        .animate-fade-in {
-            animation: fadeIn 0.6s ease-out forwards;
-        }
+        .animate-fade-in { animation: fadeIn 0.6s ease-out forwards; }
     </style>
 </head>
 <body class="bg-slate-950 text-white min-h-screen p-6">
@@ -22,13 +20,10 @@
         <header class="flex flex-col md:flex-row justify-between items-center mb-6 border-b border-slate-800 pb-4 gap-4">
             <div>
                 <h1 class="text-2xl font-black text-teal-400">My Class Manager - Direktor Paneli</h1>
-                <p class="text-sm text-slate-400">O'qituvchilar, davomat va naryadlarni real vaqt rejimida boshqarish</p>
+                <p class="text-sm text-slate-400">O'qituvchilar, davomat va naryadlarni kengaytirilgan boshqarish</p>
             </div>
             <div class="flex items-center gap-3">
                 <button id="export-btn" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-4 py-2 rounded-xl text-sm transition-all shadow-lg flex items-center gap-2">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                    </svg>
                     Excelga yuklab olish
                 </button>
                 <div class="bg-slate-900 border border-slate-800 px-4 py-2 rounded-xl text-sm shadow-lg">
@@ -40,10 +35,10 @@
         <!-- TABS -->
         <div class="flex gap-2 mb-6 border-b border-slate-800 pb-4 overflow-x-auto">
             <button onclick="switchTab('teachers')" id="btn-tab-teachers" class="px-5 py-2.5 rounded-xl font-bold text-sm bg-teal-500 text-slate-950 transition-all shadow-lg whitespace-nowrap">
-                👨‍🏫 O'qituvchilar (Login & Parol)
+                👨‍🏫 O'qituvchilar (Boshqaruv)
             </button>
             <button onclick="switchTab('attendance')" id="btn-tab-attendance" class="px-5 py-2.5 rounded-xl font-bold text-sm bg-slate-900 border border-slate-800 text-slate-400 hover:text-white transition-all whitespace-nowrap">
-                📊 Davomat va Kechqolganlar
+                📊 Davomat va Statuslar
             </button>
             <button onclick="switchTab('naryad')" id="btn-tab-naryad" class="px-5 py-2.5 rounded-xl font-bold text-sm bg-slate-900 border border-slate-800 text-slate-400 hover:text-white transition-all whitespace-nowrap">
                 🚨 Naryadchilar
@@ -51,19 +46,29 @@
         </div>
 
         <!-- 1-BO'LIM: O'QITUVCHILAR -->
-        <div id="tab-teachers" class="tab-content">
+        <div id="tab-teachers" class="tab-content space-y-6">
+            <!-- Yangi o'qituvchi qo'shishformasi -->
+            <div class="bg-slate-900/60 border border-slate-800 p-5 rounded-2xl shadow-xl">
+                <h3 class="text-md font-bold text-teal-400 mb-3">Yangi o'qituvchi qo'shish</h3>
+                <form id="add-teacher-form" class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <input type="text" id="new-teacher-login" placeholder="O'qituvchi logini (Ismi)..." required class="bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-white focus:outline-none focus:border-teal-400">
+                    <input type="text" id="new-teacher-password" placeholder="Paroli..." required class="bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-white focus:outline-none focus:border-teal-400">
+                    <button type="submit" class="bg-teal-600 hover:bg-teal-500 text-slate-950 font-bold px-4 py-2.5 rounded-lg transition-all shadow">O'qituvchi qo'shish</button>
+                </form>
+            </div>
+
             <div class="bg-slate-900/60 border border-slate-800 rounded-2xl overflow-hidden shadow-2xl backdrop-blur-md">
                 <div class="p-4 border-b border-slate-800 bg-slate-900/80 font-bold text-slate-300 flex justify-between items-center">
-                    <span>Tizimdagi barcha o'qituvchilar va ularning parollari</span>
+                    <span>Tizimdagi barcha o'qituvchilar</span>
                     <span id="teacher-count" class="text-xs text-slate-400">Jami: 0 ta</span>
                 </div>
                 <div class="overflow-x-auto">
                     <table class="w-full text-left border-collapse">
                         <thead>
                             <tr class="border-b border-slate-800 text-slate-400 text-xs uppercase bg-slate-900/40">
-                                <th class="p-4">O'qituvchi Logini (Ismi)</th>
-                                <th class="p-4">Paroli</th>
-                                <th class="p-4">Oxirgi Kirgan Vaqti</th>
+                                <th class="p-4">Login</th>
+                                <th class="p-4">Parol</th>
+                                <th class="p-4">Ro'yxatga olingan vaqti</th>
                                 <th class="p-4 text-right">Amal</th>
                             </tr>
                         </thead>
@@ -76,29 +81,37 @@
         </div>
 
         <!-- 2-BO'LIM: DAVOMAT -->
-        <div id="tab-attendance" class="tab-content hidden">
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
-                <div class="bg-slate-900/80 border border-red-500/30 p-5 rounded-2xl shadow-xl flex items-center justify-between backdrop-blur-md">
+        <div id="tab-attendance" class="tab-content hidden space-y-6">
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div class="bg-slate-900/80 border border-red-500/30 p-5 rounded-2xl shadow-xl flex items-center justify-between">
                     <div>
-                        <p class="text-xs font-bold text-red-400 uppercase tracking-wider">Jami Darsda Yo'qlar</p>
+                        <p class="text-xs font-bold text-red-400 uppercase tracking-wider">Darsda Yo'qlar</p>
                         <h3 id="stat-absent" class="text-3xl font-black text-white mt-1">0</h3>
                     </div>
-                    <div class="p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
-                    </div>
                 </div>
-                <div class="bg-slate-900/80 border border-orange-500/30 p-5 rounded-2xl shadow-xl flex items-center justify-between backdrop-blur-md">
+                <div class="bg-slate-900/80 border border-orange-500/30 p-5 rounded-2xl shadow-xl flex items-center justify-between">
                     <div>
-                        <p class="text-xs font-bold text-orange-400 uppercase tracking-wider">Jami Kechqolganlar</p>
+                        <p class="text-xs font-bold text-orange-400 uppercase tracking-wider">Kechqolganlar</p>
                         <h3 id="stat-late" class="text-3xl font-black text-white mt-1">0</h3>
                     </div>
-                    <div class="p-3 bg-orange-500/10 border border-orange-500/20 rounded-xl text-orange-400">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                </div>
+                <div class="bg-slate-900/80 border border-blue-500/30 p-5 rounded-2xl shadow-xl flex items-center justify-between">
+                    <div>
+                        <p class="text-xs font-bold text-blue-400 uppercase tracking-wider">Sababli Kelmaganlar</p>
+                        <h3 id="stat-excused" class="text-3xl font-black text-white mt-1">0</h3>
                     </div>
                 </div>
             </div>
 
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+            <!-- Tezkor filtr tugmalari -->
+            <div class="flex flex-wrap gap-2">
+                <button onclick="setStatusFilter('ALL')" id="filter-btn-ALL" class="px-4 py-2 rounded-xl text-xs font-bold bg-teal-500 text-slate-950 transition-all">Barchasi</button>
+                <button onclick="setStatusFilter('Darsda yo\'q')" id="filter-btn-absent" class="px-4 py-2 rounded-xl text-xs font-bold bg-slate-900 border border-slate-800 text-slate-300 hover:text-white transition-all">Faqat Yo'qlar</button>
+                <button onclick="setStatusFilter('Darsga kechqoldi')" id="filter-btn-late" class="px-4 py-2 rounded-xl text-xs font-bold bg-slate-900 border border-slate-800 text-slate-300 hover:text-white transition-all">Faqat Kechqolganlar</button>
+                <button onclick="setStatusFilter('Sababli')" id="filter-btn-excused" class="px-4 py-2 rounded-xl text-xs font-bold bg-slate-900 border border-slate-800 text-slate-300 hover:text-white transition-all">Faqat Sababli</button>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div class="bg-slate-900/60 border border-slate-800 p-4 rounded-xl shadow-md">
                     <label class="block text-xs font-bold text-slate-400 mb-2">O'QITUVCHINI TANLANG</label>
                     <select id="teacher-filter" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-white focus:outline-none focus:border-teal-400">
@@ -178,6 +191,7 @@
         let allAttendance = [];
         let allTeachers = [];
         let allNaryads = [];
+        let currentStatusFilter = 'ALL';
 
         socket.on('connect', () => {
             statusEl.textContent = 'Onlayn';
@@ -196,7 +210,6 @@
         }
         loadData();
 
-        // Socket jonli yangilanishlar va o'chirishlar
         socket.on('live_attendance', (data) => {
             const idx = allAttendance.findIndex(r => r.unique_id === data.unique_id);
             if (idx !== -1) allAttendance[idx] = data; else allAttendance.unshift(data);
@@ -237,43 +250,52 @@
             });
         }
 
-        // O'qituvchini o'chirish funksiyasi
+        function setStatusFilter(status) {
+            currentStatusFilter = status;
+            ['ALL', 'Darsda yo\'q', 'Darsga kechqoldi', 'Sababli'].forEach(s => {
+                const btnKey = s === 'ALL' ? 'ALL' : (s === 'Darsda yo\'q' ? 'absent' : (s === 'Darsga kechqoldi' ? 'late' : 'excused'));
+                const btn = document.getElementById(`filter-btn-${btnKey}`);
+                if (s === status) {
+                    btn.className = "px-4 py-2 rounded-xl text-xs font-bold bg-teal-500 text-slate-950 transition-all shadow";
+                } else {
+                    btn.className = "px-4 py-2 rounded-xl text-xs font-bold bg-slate-900 border border-slate-800 text-slate-300 hover:text-white transition-all";
+                }
+            });
+            renderAttendance();
+        }
+
+        // Direktordan o'qituvchi qo'shish
+        document.getElementById('add-teacher-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const login = document.getElementById('new-teacher-login').value.trim();
+            const password = document.getElementById('new-teacher-password').value.trim();
+
+            fetch('/api/teachers', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ login, password })
+            }).then(res => res.json()).then(data => {
+                if (data.success) {
+                    document.getElementById('add-teacher-form').reset();
+                } else {
+                    alert(data.message || "Xatolik yuz berdi");
+                }
+            });
+        });
+
         function deleteTeacher(id) {
             if (!confirm("Haqiqatdan ham bu o'qituvchini o'chirmoqchimisiz?")) return;
-            fetch(`/api/teachers/${id}`, { method: 'DELETE' })
-                .then(res => res.json())
-                .then(data => {
-                    if (data.success) {
-                        allTeachers = allTeachers.filter(t => t.id !== id);
-                        renderTeachers();
-                    }
-                });
+            fetch(`/api/teachers/${id}`, { method: 'DELETE' });
         }
 
-        // Davomatni o'chirish funksiyasi
         function deleteAttendance(unique_id) {
             if (!confirm("Haqiqatdan ham bu yozuvni o'chirmoqchimisiz?")) return;
-            fetch(`/api/attendance/${unique_id}`, { method: 'DELETE' })
-                .then(res => res.json())
-                .then(data => {
-                    if (data.success) {
-                        allAttendance = allAttendance.filter(r => r.unique_id !== unique_id);
-                        renderAttendance();
-                    }
-                });
+            fetch(`/api/attendance/${unique_id}`, { method: 'DELETE' });
         }
 
-        // Naryadni o'chirish funksiyasi
         function deleteNaryad(unique_id) {
             if (!confirm("Haqiqatdan ham bu naryad yozuvini o'chirmoqchimisiz?")) return;
-            fetch(`/api/naryad/${unique_id}`, { method: 'DELETE' })
-                .then(res => res.json())
-                .then(data => {
-                    if (data.success) {
-                        allNaryads = allNaryads.filter(r => r.unique_id !== unique_id);
-                        renderNaryads();
-                    }
-                });
+            fetch(`/api/naryad/${unique_id}`, { method: 'DELETE' });
         }
 
         function renderTeachers() {
@@ -282,7 +304,7 @@
             document.getElementById('teacher-count').textContent = `Jami: ${allTeachers.length} ta`;
 
             if (allTeachers.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="4" class="p-6 text-center text-slate-500">Hozircha o'qituvchilar kirmagan</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="4" class="p-6 text-center text-slate-500">Hozircha o'qituvchilar yo'q</td></tr>`;
                 return;
             }
 
@@ -317,23 +339,29 @@
 
             let absent = 0;
             let late = 0;
+            let excused = 0;
 
-            const filtered = allAttendance.filter(item => {
-                if (item.status === "Darsda bor" && !searchText) return false;
-                const itemDate = new Date(item.time).toISOString().split('T')[0];
-                const matchTeacher = !selectedTeacher || item.teacher_name === selectedTeacher;
-                const matchSearch = !searchText || item.student_name.toLowerCase().includes(searchText) || (item.passport_number && item.passport_number.toLowerCase().includes(searchText));
-                const matchDate = !selectedDate || itemDate === selectedDate;
-
-                if (matchTeacher && matchSearch && matchDate) {
-                    if (item.status === "Darsda yo'q") absent++;
-                    if (item.status === "Darsga kechqoldi") late++;
-                }
-                return matchTeacher && matchSearch && matchDate;
+            allAttendance.forEach(item => {
+                if (item.status === "Darsda yo'q") absent++;
+                if (item.status === "Darsga kechqoldi") late++;
+                if (item.status === "Sababli") excused++;
             });
 
             document.getElementById('stat-absent').textContent = absent;
             document.getElementById('stat-late').textContent = late;
+            document.getElementById('stat-excused').textContent = excused;
+
+            const filtered = allAttendance.filter(item => {
+                if (item.status === "Darsda bor" && currentStatusFilter === 'ALL' && !searchText) return false;
+                const itemDate = new Date(item.time).toISOString().split('T')[0];
+                const matchTeacher = !selectedTeacher || item.teacher_name === selectedTeacher;
+                const matchStatus = currentStatusFilter === 'ALL' || item.status === currentStatusFilter;
+                const matchSearch = !searchText || item.student_name.toLowerCase().includes(searchText) || (item.passport_number && item.passport_number.toLowerCase().includes(searchText));
+                const matchDate = !selectedDate || itemDate === selectedDate;
+
+                return matchTeacher && matchStatus && matchSearch && matchDate;
+            });
+
             document.getElementById('record-count').textContent = `Jami: ${filtered.length} ta`;
 
             if (filtered.length === 0) {
@@ -347,6 +375,7 @@
                 let statusColor = 'text-green-400 bg-green-950/40 border-green-800/40';
                 if (data.status === "Darsda yo'q") statusColor = 'text-red-400 bg-red-950/40 border-red-800/40';
                 else if (data.status === "Darsga kechqoldi") statusColor = 'text-orange-400 bg-orange-950/40 border-orange-800/40';
+                else if (data.status === "Sababli") statusColor = 'text-blue-400 bg-blue-950/40 border-blue-800/40';
 
                 row.innerHTML = `
                     <td class="p-4 font-medium text-slate-200">${data.teacher_name || 'Noma\'lum'}</td>
@@ -378,6 +407,7 @@
                 const row = document.createElement('tr');
                 row.className = 'hover:bg-slate-800/40 transition-colors';
                 row.innerHTML = `
+                    <p>...</p>
                     <td class="p-4 font-medium text-slate-200">${item.teacher_name || 'Noma\'lum'}</td>
                     <td class="p-4 text-slate-300">${item.group_name || 'Noma\'lum'}</td>
                     <td class="p-4 font-bold text-white">${item.student_name}</td>
