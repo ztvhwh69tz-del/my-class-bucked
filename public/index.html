@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Direktor Boshqaruv Paneli - Davomat</title>
+    <title>Direktor Boshqaruv Paneli</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="/socket.io/socket.io.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -19,10 +19,10 @@
 </head>
 <body class="bg-slate-950 text-white min-h-screen p-6">
     <div class="max-w-7xl mx-auto animate-fade-in">
-        <header class="flex justify-between items-center mb-6 border-b border-slate-800 pb-4">
+        <header class="flex flex-col md:flex-row justify-between items-center mb-6 border-b border-slate-800 pb-4 gap-4">
             <div>
-                <h1 class="text-2xl font-black text-teal-400">My Class Manager</h1>
-                <p class="text-sm text-slate-400">Direktor uchun real vaqt rejimidagi to'liq davomat va shaxsiy ma'lumotlar paneli</p>
+                <h1 class="text-2xl font-black text-teal-400">My Class Manager - Direktor Paneli</h1>
+                <p class="text-sm text-slate-400">O'qituvchilar, davomat va naryadlarni real vaqt rejimida boshqarish</p>
             </div>
             <div class="flex items-center gap-3">
                 <button id="export-btn" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-4 py-2 rounded-xl text-sm transition-all shadow-lg flex items-center gap-2">
@@ -37,80 +37,136 @@
             </div>
         </header>
 
-        <!-- STATISTIKA KARTOCHKALARI -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
-            <div class="bg-slate-900/80 border border-red-500/30 p-5 rounded-2xl shadow-xl flex items-center justify-between backdrop-blur-md">
-                <div>
-                    <p class="text-xs font-bold text-red-400 uppercase tracking-wider">Jami Darsda Yo'qlar</p>
-                    <h3 id="stat-absent" class="text-3xl font-black text-white mt-1">0</h3>
-                </div>
-                <div class="p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                </div>
-            </div>
+        <!-- BO'LIMLAR (TABS) TUGMALARI -->
+        <div class="flex gap-2 mb-6 border-b border-slate-800 pb-4 overflow-x-auto">
+            <button onclick="switchTab('teachers')" id="btn-tab-teachers" class="px-5 py-2.5 rounded-xl font-bold text-sm bg-teal-500 text-slate-950 transition-all shadow-lg whitespace-nowrap">
+                👨‍🏫 O'qituvchilar (Login & Parol)
+            </button>
+            <button onclick="switchTab('attendance')" id="btn-tab-attendance" class="px-5 py-2.5 rounded-xl font-bold text-sm bg-slate-900 border border-slate-800 text-slate-400 hover:text-white transition-all whitespace-nowrap">
+                📊 Davomat va Kechqolganlar
+            </button>
+            <button onclick="switchTab('naryad')" id="btn-tab-naryad" class="px-5 py-2.5 rounded-xl font-bold text-sm bg-slate-900 border border-slate-800 text-slate-400 hover:text-white transition-all whitespace-nowrap">
+                🚨 Naryadchilar
+            </button>
+        </div>
 
-            <div class="bg-slate-900/80 border border-orange-500/30 p-5 rounded-2xl shadow-xl flex items-center justify-between backdrop-blur-md">
-                <div>
-                    <p class="text-xs font-bold text-orange-400 uppercase tracking-wider">Jami Kechqolganlar</p>
-                    <h3 id="stat-late" class="text-3xl font-black text-white mt-1">0</h3>
+        <!-- 1-BO'LIM: O'QITUVCHILAR (LOGIN VA PAROLLAR) -->
+        <div id="tab-teachers" class="tab-content">
+            <div class="bg-slate-900/60 border border-slate-800 rounded-2xl overflow-hidden shadow-2xl backdrop-blur-md">
+                <div class="p-4 border-b border-slate-800 bg-slate-900/80 font-bold text-slate-300 flex justify-between items-center">
+                    <span>Tizimdagi barcha o'qituvchilar va ularning parollari</span>
+                    <span id="teacher-count" class="text-xs text-slate-400">Jami: 0 ta</span>
                 </div>
-                <div class="p-3 bg-orange-500/10 border border-orange-500/20 rounded-xl text-orange-400">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="border-b border-slate-800 text-slate-400 text-xs uppercase bg-slate-900/40">
+                                <th class="p-4">O'qituvchi Logini (Ismi)</th>
+                                <th class="p-4">Paroli</th>
+                                <th class="p-4">Oxirgi Kirgan Vaqti</th>
+                            </tr>
+                        </thead>
+                        <tbody id="teachers-table-body" class="divide-y divide-slate-800/60 text-sm">
+                            <tr><td colspan="3" class="p-6 text-center text-slate-500">Ma'lumot topilmadi</td></tr>
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </div>
 
-        <!-- Filtrlar va Qidiruv -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-            <div class="bg-slate-900/60 border border-slate-800 p-4 rounded-xl shadow-md">
-                <label class="block text-xs font-bold text-slate-400 mb-2">O'QITUVCHINI TANLANG</label>
-                <select id="teacher-filter" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-white focus:outline-none focus:border-teal-400 transition-colors">
-                    <option value="">Barcha o'qituvchilar</option>
-                </select>
+        <!-- 2-BO'LIM: DAVOMAT -->
+        <div id="tab-attendance" class="tab-content hidden">
+            <!-- Statistika -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+                <div class="bg-slate-900/80 border border-red-500/30 p-5 rounded-2xl shadow-xl flex items-center justify-between backdrop-blur-md">
+                    <div>
+                        <p class="text-xs font-bold text-red-400 uppercase tracking-wider">Jami Darsda Yo'qlar</p>
+                        <h3 id="stat-absent" class="text-3xl font-black text-white mt-1">0</h3>
+                    </div>
+                    <div class="p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                    </div>
+                </div>
+                <div class="bg-slate-900/80 border border-orange-500/30 p-5 rounded-2xl shadow-xl flex items-center justify-between backdrop-blur-md">
+                    <div>
+                        <p class="text-xs font-bold text-orange-400 uppercase tracking-wider">Jami Kechqolganlar</p>
+                        <h3 id="stat-late" class="text-3xl font-black text-white mt-1">0</h3>
+                    </div>
+                    <div class="p-3 bg-orange-500/10 border border-orange-500/20 rounded-xl text-orange-400">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                    </div>
+                </div>
             </div>
-            <div class="bg-slate-900/60 border border-slate-800 p-4 rounded-xl shadow-md">
-                <label class="block text-xs font-bold text-slate-400 mb-2">GURUHNI TANLANG</label>
-                <select id="group-filter" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-white focus:outline-none focus:border-teal-400 transition-colors">
-                    <option value="">Barcha guruhlar</option>
-                </select>
+
+            <!-- Filtrlar -->
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+                <div class="bg-slate-900/60 border border-slate-800 p-4 rounded-xl shadow-md">
+                    <label class="block text-xs font-bold text-slate-400 mb-2">O'QITUVCHINI TANLANG</label>
+                    <select id="teacher-filter" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-white focus:outline-none focus:border-teal-400">
+                        <option value="">Barcha o'qituvchilar</option>
+                    </select>
+                </div>
+                <div class="bg-slate-900/60 border border-slate-800 p-4 rounded-xl shadow-md">
+                    <label class="block text-xs font-bold text-slate-400 mb-2">O'QUVCHINI QIDIRISH</label>
+                    <input type="text" id="search-input" placeholder="Ism, pasport..." class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-white focus:outline-none focus:border-teal-400">
+                </div>
+                <div class="bg-slate-900/60 border border-slate-800 p-4 rounded-xl shadow-md">
+                    <label class="block text-xs font-bold text-slate-400 mb-2">SANANI TANLANG</label>
+                    <input type="date" id="date-filter" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-white focus:outline-none focus:border-teal-400">
+                </div>
             </div>
-            <div class="bg-slate-900/60 border border-slate-800 p-4 rounded-xl shadow-md">
-                <label class="block text-xs font-bold text-slate-400 mb-2">O'QUVCHINI QIDIRISH</label>
-                <input type="text" id="search-input" placeholder="Ism, pasport yoki JSHSHR..." class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-white focus:outline-none focus:border-teal-400 transition-colors">
-            </div>
-            <div class="bg-slate-900/60 border border-slate-800 p-4 rounded-xl shadow-md">
-                <label class="block text-xs font-bold text-slate-400 mb-2">SANANI TANLANG</label>
-                <input type="date" id="date-filter" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-white focus:outline-none focus:border-teal-400 transition-colors">
+
+            <!-- Jadval -->
+            <div class="bg-slate-900/60 border border-slate-800 rounded-2xl overflow-hidden shadow-2xl backdrop-blur-md">
+                <div class="p-4 border-b border-slate-800 bg-slate-900/80 font-bold text-slate-300 flex justify-between items-center">
+                    <span>Davomat tarixi</span>
+                    <span id="record-count" class="text-xs text-slate-400">Jami: 0 ta</span>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="border-b border-slate-800 text-slate-400 text-xs uppercase bg-slate-900/40">
+                                <th class="p-4">O'qituvchi</th>
+                                <th class="p-4">Guruh</th>
+                                <th class="p-4">O'quvchi F.I.O</th>
+                                <th class="p-4">Pasport / JSHSHR</th>
+                                <th class="p-4">Telefon</th>
+                                <th class="p-4">Holati</th>
+                                <th class="p-4">Sana va Vaqt</th>
+                            </tr>
+                        </thead>
+                        <tbody id="attendance-table-body" class="divide-y divide-slate-800/60 text-sm">
+                            <tr><td colspan="7" class="p-6 text-center text-slate-500">Ma'lumot topilmadi</td></tr>
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
 
-        <!-- To'liq Ma'lumotlar Jadvali -->
-        <div class="bg-slate-900/60 border border-slate-800 rounded-2xl overflow-hidden shadow-2xl backdrop-blur-md">
-            <div class="p-4 border-b border-slate-800 bg-slate-900/80 font-bold text-slate-300 flex justify-between items-center">
-                <span>O'quvchilarning to'liq ma'lumotlari va davomat tarixi</span>
-                <span id="record-count" class="text-xs text-slate-400">Jami: 0 ta</span>
-            </div>
-            <div class="overflow-x-auto">
-                <table class="w-full text-left border-collapse">
-                    <thead>
-                        <tr class="border-b border-slate-800 text-slate-400 text-xs uppercase bg-slate-900/40">
-                            <th class="p-4">O'qituvchi</th>
-                            <th class="p-4">Guruh</th>
-                            <th class="p-4">O'quvchi F.I.O</th>
-                            <th class="p-4">Pasport / JSHSHR</th>
-                            <th class="p-4">Telefon</th>
-                            <th class="p-4">Holati</th>
-                            <th class="p-4">Sana va Vaqt</th>
-                        </tr>
-                    </thead>
-                    <tbody id="attendance-table-body" class="divide-y divide-slate-800/60 text-sm">
-                        <!-- Ma'lumotlar -->
-                    </tbody>
-                </table>
+        <!-- 3-BO'LIM: NARYADCHILAR -->
+        <div id="tab-naryad" class="tab-content hidden">
+            <div class="bg-slate-900/60 border border-slate-800 rounded-2xl overflow-hidden shadow-2xl backdrop-blur-md">
+                <div class="p-4 border-b border-slate-800 bg-slate-900/80 font-bold text-slate-300 flex justify-between items-center">
+                    <span>Naryadga tushgan o'quvchilar ro'yxati</span>
+                    <span id="naryad-count" class="text-xs text-slate-400">Jami: 0 ta</span>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="border-b border-slate-800 text-slate-400 text-xs uppercase bg-slate-900/40">
+                                <th class="p-4">O'qituvchi</th>
+                                <th class="p-4">Guruh</th>
+                                <th class="p-4">O'quvchi F.I.O</th>
+                                <th class="p-4">Pasport / JSHSHR</th>
+                                <th class="p-4">Telefon</th>
+                                <th class="p-4">Naryad Tugash Vaqti</th>
+                            </tr>
+                        </thead>
+                        <tbody id="naryad-table-body" class="divide-y divide-slate-800/60 text-sm">
+                            <tr><td colspan="6" class="p-6 text-center text-slate-500">Ma'lumot topilmadi</td></tr>
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
     </div>
@@ -118,17 +174,10 @@
     <script>
         const socket = io();
         const statusEl = document.getElementById('connection-status');
-        const tableBody = document.getElementById('attendance-table-body');
-        const teacherFilter = document.getElementById('teacher-filter');
-        const groupFilter = document.getElementById('group-filter');
-        const searchInput = document.getElementById('search-input');
-        const dateFilter = document.getElementById('date-filter');
-        const recordCountEl = document.getElementById('record-count');
-        const statAbsent = document.getElementById('stat-absent');
-        const statLate = document.getElementById('stat-late');
-        const exportBtn = document.getElementById('export-btn');
-
-        let allRecords = [];
+        
+        let allAttendance = [];
+        let allTeachers = [];
+        let allNaryads = [];
 
         socket.on('connect', () => {
             statusEl.textContent = 'Onlayn';
@@ -140,168 +189,195 @@
             statusEl.className = 'text-red-400 font-bold';
         });
 
-        fetch('/api/attendance')
-            .then(res => res.json())
-            .then(data => {
-                allRecords = data;
-                updateFilters();
-                renderTable();
+        // Ma'lumotlarni serverdan olish
+        function loadData() {
+            fetch('/api/attendance').then(res => res.json()).then(data => {
+                allAttendance = data;
+                renderAttendance();
             });
+            fetch('/api/teachers').then(res => res.json()).then(data => {
+                allTeachers = data;
+                renderTeachers();
+            });
+            fetch('/api/naryad').then(res => res.json()).then(data => {
+                allNaryads = data;
+                renderNaryads();
+            });
+        }
+        loadData();
 
+        // Socket jonli yangilanishlar
         socket.on('live_attendance', (data) => {
-            const index = allRecords.findIndex(r => r.unique_id === data.unique_id);
-            if (index !== -1) {
-                allRecords[index] = data; 
-            } else {
-                allRecords.unshift(data); 
-            }
-            updateFilters();
-            renderTable();
+            const idx = allAttendance.findIndex(r => r.unique_id === data.unique_id);
+            if (idx !== -1) allAttendance[idx] = data;
+            else allAttendance.unshift(data);
+            renderAttendance();
         });
 
-        function updateFilters() {
-            const teachers = [...new Set(allRecords.map(r => r.teacher_name))].filter(Boolean);
-            const groups = [...new Set(allRecords.map(r => r.group_name))].filter(Boolean);
+        socket.on('teacher_added', (data) => {
+            const idx = allTeachers.findIndex(t => t.login === data.login);
+            if (idx !== -1) allTeachers[idx] = data;
+            else allTeachers.unshift(data);
+            renderTeachers();
+        });
 
-            const selectedTeacher = teacherFilter.value;
-            const selectedGroup = groupFilter.value;
+        socket.on('live_naryad', (data) => {
+            allNaryads.unshift(data);
+            renderNaryads();
+        });
 
-            teacherFilter.innerHTML = '<option value="">Barcha o\'qituvchilar</option>';
-            teachers.forEach(t => {
-                teacherFilter.innerHTML += `<option value="${t}" ${t === selectedTeacher ? 'selected' : ''}>${t}</option>`;
-            });
+        // Bo'limlarni almashtirish (Tabs)
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            document.getElementById(`tab-${tabName}`).classList.remove('hidden');
 
-            groupFilter.innerHTML = '<option value="">Barcha guruhlar</option>';
-            groups.forEach(g => {
-                groupFilter.innerHTML += `<option value="${g}" ${g === selectedGroup ? 'selected' : ''}>${g}</option>`;
-            });
-        }
-
-        function getFilteredRecords() {
-            const selectedTeacher = teacherFilter.value;
-            const selectedGroup = groupFilter.value;
-            const searchText = searchInput.value.toLowerCase().trim();
-            const selectedDate = dateFilter.value;
-
-            return allRecords.filter(item => {
-                if (!searchText && item.status === "Darsda bor") return false;
-
-                const itemDate = new Date(item.time).toISOString().split('T')[0];
-
-                const matchTeacher = !selectedTeacher || item.teacher_name === selectedTeacher;
-                const matchGroup = !selectedGroup || item.group_name === selectedGroup;
-                const matchSearch = !searchText || 
-                    item.student_name.toLowerCase().includes(searchText) ||
-                    (item.passport_number && item.passport_number.toLowerCase().includes(searchText)) ||
-                    (item.jshshr && item.jshshr.toLowerCase().includes(searchText));
-                const matchDate = !selectedDate || itemDate === selectedDate;
-
-                return matchTeacher && matchGroup && matchSearch && matchDate;
-            });
-        }
-
-        function renderTable() {
-            const selectedTeacher = teacherFilter.value;
-            const selectedGroup = groupFilter.value;
-            const searchText = searchInput.value.toLowerCase().trim();
-            const selectedDate = dateFilter.value;
-
-            tableBody.innerHTML = '';
-            const filtered = getFilteredRecords();
-
-            let absentCount = 0;
-            let lateCount = 0;
-
-            allRecords.forEach(item => {
-                if (item.status === "Darsda bor") return;
-
-                const itemDate = new Date(item.time).toISOString().split('T')[0];
-                const matchTeacher = !selectedTeacher || item.teacher_name === selectedTeacher;
-                const matchGroup = !selectedGroup || item.group_name === selectedGroup;
-                const matchSearch = !searchText || 
-                    item.student_name.toLowerCase().includes(searchText) ||
-                    (item.passport_number && item.passport_number.toLowerCase().includes(searchText)) ||
-                    (item.jshshr && item.jshshr.toLowerCase().includes(searchText));
-                const matchDate = !selectedDate || itemDate === selectedDate;
-
-                if (matchTeacher && matchGroup && matchSearch && matchDate) {
-                    if (item.status === "Darsda yo'q") absentCount++;
-                    if (item.status === "Darsga kechqoldi") lateCount++;
+            ['teachers', 'attendance', 'naryad'].forEach(t => {
+                const btn = document.getElementById(`btn-tab-${t}`);
+                if (t === tabName) {
+                    btn.className = "px-5 py-2.5 rounded-xl font-bold text-sm bg-teal-500 text-slate-950 transition-all shadow-lg whitespace-nowrap";
+                } else {
+                    btn.className = "px-5 py-2.5 rounded-xl font-bold text-sm bg-slate-900 border border-slate-800 text-slate-400 hover:text-white transition-all whitespace-nowrap";
                 }
             });
+        }
 
-            statAbsent.textContent = absentCount;
-            statLate.textContent = lateCount;
-            recordCountEl.textContent = `Jami: ${filtered.length} ta`;
+        // O'qituvchilar jadvalini chizish
+        function renderTeachers() {
+            const tbody = document.getElementById('teachers-table-body');
+            tbody.innerHTML = '';
+            document.getElementById('teacher-count').textContent = `Jami: ${allTeachers.length} ta`;
+
+            if (allTeachers.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="3" class="p-6 text-center text-slate-500">Hozircha o'qituvchilar kirmagan</td></tr>`;
+                return;
+            }
+
+            allTeachers.forEach(t => {
+                const row = document.createElement('tr');
+                row.className = 'hover:bg-slate-800/40 transition-colors';
+                row.innerHTML = `
+                    <td class="p-4 font-bold text-white">${t.login}</td>
+                    <td class="p-4 font-mono text-teal-400">${t.password || 'Kiritilmagan'}</td>
+                    <td class="p-4 text-slate-400 text-xs">${new Date(t.time).toLocaleString()}</td>
+                `;
+                tbody.appendChild(row);
+            });
+
+            // Filtr selectni yangilash
+            const teacherFilter = document.getElementById('teacher-filter');
+            teacherFilter.innerHTML = '<option value="">Barcha o\'qituvchilar</option>';
+            allTeachers.forEach(t => {
+                teacherFilter.innerHTML += `<option value="${t.login}">${t.login}</option>`;
+            });
+        }
+
+        // Davomat jadvalini chizish
+        function renderAttendance() {
+            const tbody = document.getElementById('attendance-table-body');
+            tbody.innerHTML = '';
+            
+            const selectedTeacher = document.getElementById('teacher-filter').value;
+            const searchText = document.getElementById('search-input').value.toLowerCase().trim();
+            const selectedDate = document.getElementById('date-filter').value;
+
+            let absent = 0;
+            let late = 0;
+
+            const filtered = allAttendance.filter(item => {
+                if (item.status === "Darsda bor" && !searchText) return false;
+                const itemDate = new Date(item.time).toISOString().split('T')[0];
+                const matchTeacher = !selectedTeacher || item.teacher_name === selectedTeacher;
+                const matchSearch = !searchText || item.student_name.toLowerCase().includes(searchText) || (item.passport_number && item.passport_number.toLowerCase().includes(searchText));
+                const matchDate = !selectedDate || itemDate === selectedDate;
+
+                if (matchTeacher && matchSearch && matchDate) {
+                    if (item.status === "Darsda yo'q") absent++;
+                    if (item.status === "Darsga kechqoldi") late++;
+                }
+                return matchTeacher && matchSearch && matchDate;
+            });
+
+            document.getElementById('stat-absent').textContent = absent;
+            document.getElementById('stat-late').textContent = late;
+            document.getElementById('record-count').textContent = `Jami: ${filtered.length} ta`;
 
             if (filtered.length === 0) {
-                tableBody.innerHTML = `<tr><td colspan="7" class="p-6 text-center text-slate-500">Ma'lumot topilmadi</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="7" class="p-6 text-center text-slate-500">Ma'lumot topilmadi</td></tr>`;
                 return;
             }
 
             filtered.forEach(data => {
                 const row = document.createElement('tr');
                 row.className = 'hover:bg-slate-800/40 transition-colors';
-                
                 let statusColor = 'text-green-400 bg-green-950/40 border-green-800/40';
-                if (data.status === "Darsda yo'q") {
-                    statusColor = 'text-red-400 bg-red-950/40 border-red-800/40';
-                } else if (data.status === "Darsga kechqoldi") {
-                    statusColor = 'text-orange-400 bg-orange-950/40 border-orange-800/40';
-                }
-
-                const timeStr = new Date(data.time).toLocaleTimeString();
-                const dateStr = new Date(data.time).toLocaleDateString();
+                if (data.status === "Darsda yo'q") statusColor = 'text-red-400 bg-red-950/40 border-red-800/40';
+                else if (data.status === "Darsga kechqoldi") statusColor = 'text-orange-400 bg-orange-950/40 border-orange-800/40';
 
                 row.innerHTML = `
                     <td class="p-4 font-medium text-slate-200">${data.teacher_name || 'Noma\'lum'}</td>
                     <td class="p-4 text-slate-300">${data.group_name || 'Noma\'lum'}</td>
                     <td class="p-4 font-bold text-white">${data.student_name}</td>
-                    <td class="p-4 text-slate-300 text-xs">
-                        Pasport: <b class="text-teal-400">${data.passport_number || 'Kiritilmagan'}</b><br>
-                        JSHSHR: <b class="text-teal-400">${data.jshshr || 'Kiritilmagan'}</b>
-                    </td>
-                    <td class="p-4 text-slate-300">${data.phone_number || 'Kiritilmagan'}</td>
-                    <td class="p-4">
-                        <span class="px-3 py-1 rounded-full text-xs border ${statusColor}">
-                            ${data.status}
-                        </span>
-                    </td>
-                    <td class="p-4 text-slate-400 text-xs">${dateStr} ${timeStr}</td>
+                    <td class="p-4 text-slate-300 text-xs">Pasport: <b class="text-teal-400">${data.passport_number}</b><br>JSHSHR: <b class="text-teal-400">${data.jshshr}</b></td>
+                    <td class="p-4 text-slate-300">${data.phone_number}</td>
+                    <td class="p-4"><span class="px-3 py-1 rounded-full text-xs border ${statusColor}">${data.status}</span></td>
+                    <td class="p-4 text-slate-400 text-xs">${new Date(data.time).toLocaleString()}</td>
                 `;
-                tableBody.appendChild(row);
+                tbody.appendChild(row);
             });
         }
 
-        exportBtn.addEventListener('click', () => {
-            const filtered = getFilteredRecords();
-            if (filtered.length === 0) {
-                alert("Yuklab olish uchun ma'lumot yo'q!");
+        // Naryadlar jadvalini chizish
+        function renderNaryads() {
+            const tbody = document.getElementById('naryad-table-body');
+            tbody.innerHTML = '';
+            document.getElementById('naryad-count').textContent = `Jami: ${allNaryads.length} ta`;
+
+            if (allNaryads.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="6" class="p-6 text-center text-slate-500">Hozircha naryadga tushganlar yo'q</td></tr>`;
                 return;
             }
 
-            const excelData = filtered.map(item => ({
-                "O'qituvchi": item.teacher_name || "Noma'lum",
-                "Guruh": item.group_name || "Noma'lum",
+            allNaryads.forEach(item => {
+                const row = document.createElement('tr');
+                row.className = 'hover:bg-slate-800/40 transition-colors';
+                row.innerHTML = `
+                    <td class="p-4 font-medium text-slate-200">${item.teacher_name || 'Noma\'lum'}</td>
+                    <td class="p-4 text-slate-300">${item.group_name || 'Noma\'lum'}</td>
+                    <td class="p-4 font-bold text-white">${item.student_name}</td>
+                    <td class="p-4 text-slate-300 text-xs">Pasport: <b class="text-teal-400">${item.passport_number}</b><br>JSHSHR: <b class="text-teal-400">${item.jshshr}</b></td>
+                    <td class="p-4 text-slate-300">${item.phone_number}</td>
+                    <td class="p-4 text-red-400 font-bold text-xs">${new Date(item.naryad_end_date).toLocaleString()}</td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        // Hodisalar (Listeners)
+        document.getElementById('teacher-filter').addEventListener('change', renderAttendance);
+        document.getElementById('search-input').addEventListener('input', renderAttendance);
+        document.getElementById('date-filter').addEventListener('change', renderAttendance);
+
+        // Excelga export qilish
+        document.getElementById('export-btn').addEventListener('click', () => {
+            if (allAttendance.length === 0) {
+                alert("Yuklab olish uchun ma'lumot yo'q!");
+                return;
+            }
+            const excelData = allAttendance.map(item => ({
+                "O'qituvchi": item.teacher_name,
+                "Guruh": item.group_name,
                 "O'quvchi F.I.O": item.student_name,
-                "Pasport": item.passport_number || "Kiritilmagan",
-                "JSHSHR": item.jshshr || "Kiritilmagan",
-                "Telefon": item.phone_number || "Kiritilmagan",
+                "Pasport": item.passport_number,
+                "JSHSHR": item.jshshr,
+                "Telefon": item.phone_number,
                 "Holati": item.status,
                 "Sana va Vaqt": new Date(item.time).toLocaleString()
             }));
-
             const worksheet = XLSX.utils.json_to_sheet(excelData);
             const workbook = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(workbook, worksheet, "To'liq_Davomat_Hisoboti");
-
-            XLSX.writeFile(workbook, "Toliq_Davomat_Hisoboti.xlsx");
+            XLSX.utils.book_append_sheet(workbook, worksheet, "Davomat_Hisoboti");
+            XLSX.writeFile(workbook, "Davomat_Hisoboti.xlsx");
         });
-
-        teacherFilter.addEventListener('change', renderTable);
-        groupFilter.addEventListener('change', renderTable);
-        searchInput.addEventListener('input', renderTable);
-        dateFilter.addEventListener('change', renderTable);
     </script>
 </body>
 </html>
