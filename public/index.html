@@ -37,7 +37,7 @@
             </div>
         </header>
 
-        <!-- BO'LIMLAR (TABS) TUGMALARI -->
+        <!-- TABS -->
         <div class="flex gap-2 mb-6 border-b border-slate-800 pb-4 overflow-x-auto">
             <button onclick="switchTab('teachers')" id="btn-tab-teachers" class="px-5 py-2.5 rounded-xl font-bold text-sm bg-teal-500 text-slate-950 transition-all shadow-lg whitespace-nowrap">
                 👨‍🏫 O'qituvchilar (Login & Parol)
@@ -50,7 +50,7 @@
             </button>
         </div>
 
-        <!-- 1-BO'LIM: O'QITUVCHILAR (LOGIN VA PAROLLAR) -->
+        <!-- 1-BO'LIM: O'QITUVCHILAR -->
         <div id="tab-teachers" class="tab-content">
             <div class="bg-slate-900/60 border border-slate-800 rounded-2xl overflow-hidden shadow-2xl backdrop-blur-md">
                 <div class="p-4 border-b border-slate-800 bg-slate-900/80 font-bold text-slate-300 flex justify-between items-center">
@@ -64,10 +64,11 @@
                                 <th class="p-4">O'qituvchi Logini (Ismi)</th>
                                 <th class="p-4">Paroli</th>
                                 <th class="p-4">Oxirgi Kirgan Vaqti</th>
+                                <th class="p-4 text-right">Amal</th>
                             </tr>
                         </thead>
                         <tbody id="teachers-table-body" class="divide-y divide-slate-800/60 text-sm">
-                            <tr><td colspan="3" class="p-6 text-center text-slate-500">Ma'lumot topilmadi</td></tr>
+                            <tr><td colspan="4" class="p-6 text-center text-slate-500">Ma'lumot topilmadi</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -76,7 +77,6 @@
 
         <!-- 2-BO'LIM: DAVOMAT -->
         <div id="tab-attendance" class="tab-content hidden">
-            <!-- Statistika -->
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
                 <div class="bg-slate-900/80 border border-red-500/30 p-5 rounded-2xl shadow-xl flex items-center justify-between backdrop-blur-md">
                     <div>
@@ -98,7 +98,6 @@
                 </div>
             </div>
 
-            <!-- Filtrlar -->
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
                 <div class="bg-slate-900/60 border border-slate-800 p-4 rounded-xl shadow-md">
                     <label class="block text-xs font-bold text-slate-400 mb-2">O'QITUVCHINI TANLANG</label>
@@ -116,7 +115,6 @@
                 </div>
             </div>
 
-            <!-- Jadval -->
             <div class="bg-slate-900/60 border border-slate-800 rounded-2xl overflow-hidden shadow-2xl backdrop-blur-md">
                 <div class="p-4 border-b border-slate-800 bg-slate-900/80 font-bold text-slate-300 flex justify-between items-center">
                     <span>Davomat tarixi</span>
@@ -133,10 +131,11 @@
                                 <th class="p-4">Telefon</th>
                                 <th class="p-4">Holati</th>
                                 <th class="p-4">Sana va Vaqt</th>
+                                <th class="p-4 text-right">Amal</th>
                             </tr>
                         </thead>
                         <tbody id="attendance-table-body" class="divide-y divide-slate-800/60 text-sm">
-                            <tr><td colspan="7" class="p-6 text-center text-slate-500">Ma'lumot topilmadi</td></tr>
+                            <tr><td colspan="8" class="p-6 text-center text-slate-500">Ma'lumot topilmadi</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -160,10 +159,11 @@
                                 <th class="p-4">Pasport / JSHSHR</th>
                                 <th class="p-4">Telefon</th>
                                 <th class="p-4">Naryad Tugash Vaqti</th>
+                                <th class="p-4 text-right">Amal</th>
                             </tr>
                         </thead>
                         <tbody id="naryad-table-body" class="divide-y divide-slate-800/60 text-sm">
-                            <tr><td colspan="6" class="p-6 text-center text-slate-500">Ma'lumot topilmadi</td></tr>
+                            <tr><td colspan="7" class="p-6 text-center text-slate-500">Hozircha naryadga tushganlar yo'q</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -189,44 +189,40 @@
             statusEl.className = 'text-red-400 font-bold';
         });
 
-        // Ma'lumotlarni serverdan olish
         function loadData() {
-            fetch('/api/attendance').then(res => res.json()).then(data => {
-                allAttendance = data;
-                renderAttendance();
-            });
-            fetch('/api/teachers').then(res => res.json()).then(data => {
-                allTeachers = data;
-                renderTeachers();
-            });
-            fetch('/api/naryad').then(res => res.json()).then(data => {
-                allNaryads = data;
-                renderNaryads();
-            });
+            fetch('/api/attendance').then(res => res.json()).then(data => { allAttendance = data; renderAttendance(); });
+            fetch('/api/teachers').then(res => res.json()).then(data => { allTeachers = data; renderTeachers(); });
+            fetch('/api/naryad').then(res => res.json()).then(data => { allNaryads = data; renderNaryads(); });
         }
         loadData();
 
-        // Socket jonli yangilanishlar
+        // Socket jonli yangilanishlar va o'chirishlar
         socket.on('live_attendance', (data) => {
             const idx = allAttendance.findIndex(r => r.unique_id === data.unique_id);
-            if (idx !== -1) allAttendance[idx] = data;
-            else allAttendance.unshift(data);
+            if (idx !== -1) allAttendance[idx] = data; else allAttendance.unshift(data);
+            renderAttendance();
+        });
+        socket.on('attendance_deleted', (unique_id) => {
+            allAttendance = allAttendance.filter(r => r.unique_id !== unique_id);
             renderAttendance();
         });
 
         socket.on('teacher_added', (data) => {
             const idx = allTeachers.findIndex(t => t.login === data.login);
-            if (idx !== -1) allTeachers[idx] = data;
-            else allTeachers.unshift(data);
+            if (idx !== -1) allTeachers[idx] = data; else allTeachers.unshift(data);
+            renderTeachers();
+        });
+        socket.on('teacher_deleted', (id) => {
+            allTeachers = allTeachers.filter(t => t.id !== id && t.login !== id);
             renderTeachers();
         });
 
-        socket.on('live_naryad', (data) => {
-            allNaryads.unshift(data);
+        socket.on('live_naryad', (data) => { allNaryads.unshift(data); renderNaryads(); });
+        socket.on('naryad_deleted', (unique_id) => {
+            allNaryads = allNaryads.filter(r => r.unique_id !== unique_id);
             renderNaryads();
         });
 
-        // Bo'limlarni almashtirish (Tabs)
         function switchTab(tabName) {
             document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
             document.getElementById(`tab-${tabName}`).classList.remove('hidden');
@@ -241,14 +237,52 @@
             });
         }
 
-        // O'qituvchilar jadvalini chizish
+        // O'qituvchini o'chirish funksiyasi
+        function deleteTeacher(id) {
+            if (!confirm("Haqiqatdan ham bu o'qituvchini o'chirmoqchimisiz?")) return;
+            fetch(`/api/teachers/${id}`, { method: 'DELETE' })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        allTeachers = allTeachers.filter(t => t.id !== id);
+                        renderTeachers();
+                    }
+                });
+        }
+
+        // Davomatni o'chirish funksiyasi
+        function deleteAttendance(unique_id) {
+            if (!confirm("Haqiqatdan ham bu yozuvni o'chirmoqchimisiz?")) return;
+            fetch(`/api/attendance/${unique_id}`, { method: 'DELETE' })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        allAttendance = allAttendance.filter(r => r.unique_id !== unique_id);
+                        renderAttendance();
+                    }
+                });
+        }
+
+        // Naryadni o'chirish funksiyasi
+        function deleteNaryad(unique_id) {
+            if (!confirm("Haqiqatdan ham bu naryad yozuvini o'chirmoqchimisiz?")) return;
+            fetch(`/api/naryad/${unique_id}`, { method: 'DELETE' })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        allNaryads = allNaryads.filter(r => r.unique_id !== unique_id);
+                        renderNaryads();
+                    }
+                });
+        }
+
         function renderTeachers() {
             const tbody = document.getElementById('teachers-table-body');
             tbody.innerHTML = '';
             document.getElementById('teacher-count').textContent = `Jami: ${allTeachers.length} ta`;
 
             if (allTeachers.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="3" class="p-6 text-center text-slate-500">Hozircha o'qituvchilar kirmagan</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="4" class="p-6 text-center text-slate-500">Hozircha o'qituvchilar kirmagan</td></tr>`;
                 return;
             }
 
@@ -259,11 +293,13 @@
                     <td class="p-4 font-bold text-white">${t.login}</td>
                     <td class="p-4 font-mono text-teal-400">${t.password || 'Kiritilmagan'}</td>
                     <td class="p-4 text-slate-400 text-xs">${new Date(t.time).toLocaleString()}</td>
+                    <td class="p-4 text-right">
+                        <button onclick="deleteTeacher('${t.id}')" class="bg-red-600/80 hover:bg-red-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-all shadow">O'chirish</button>
+                    </td>
                 `;
                 tbody.appendChild(row);
             });
 
-            // Filtr selectni yangilash
             const teacherFilter = document.getElementById('teacher-filter');
             teacherFilter.innerHTML = '<option value="">Barcha o\'qituvchilar</option>';
             allTeachers.forEach(t => {
@@ -271,7 +307,6 @@
             });
         }
 
-        // Davomat jadvalini chizish
         function renderAttendance() {
             const tbody = document.getElementById('attendance-table-body');
             tbody.innerHTML = '';
@@ -302,7 +337,7 @@
             document.getElementById('record-count').textContent = `Jami: ${filtered.length} ta`;
 
             if (filtered.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="7" class="p-6 text-center text-slate-500">Ma'lumot topilmadi</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="8" class="p-6 text-center text-slate-500">Ma'lumot topilmadi</td></tr>`;
                 return;
             }
 
@@ -321,19 +356,21 @@
                     <td class="p-4 text-slate-300">${data.phone_number}</td>
                     <td class="p-4"><span class="px-3 py-1 rounded-full text-xs border ${statusColor}">${data.status}</span></td>
                     <td class="p-4 text-slate-400 text-xs">${new Date(data.time).toLocaleString()}</td>
+                    <td class="p-4 text-right">
+                        <button onclick="deleteAttendance('${data.unique_id}')" class="bg-red-600/80 hover:bg-red-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-all shadow">O'chirish</button>
+                    </td>
                 `;
                 tbody.appendChild(row);
             });
         }
 
-        // Naryadlar jadvalini chizish
         function renderNaryads() {
             const tbody = document.getElementById('naryad-table-body');
             tbody.innerHTML = '';
             document.getElementById('naryad-count').textContent = `Jami: ${allNaryads.length} ta`;
 
             if (allNaryads.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="6" class="p-6 text-center text-slate-500">Hozircha naryadga tushganlar yo'q</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="7" class="p-6 text-center text-slate-500">Hozircha naryadga tushganlar yo'q</td></tr>`;
                 return;
             }
 
@@ -347,17 +384,18 @@
                     <td class="p-4 text-slate-300 text-xs">Pasport: <b class="text-teal-400">${item.passport_number}</b><br>JSHSHR: <b class="text-teal-400">${item.jshshr}</b></td>
                     <td class="p-4 text-slate-300">${item.phone_number}</td>
                     <td class="p-4 text-red-400 font-bold text-xs">${new Date(item.naryad_end_date).toLocaleString()}</td>
+                    <td class="p-4 text-right">
+                        <button onclick="deleteNaryad('${item.unique_id}')" class="bg-red-600/80 hover:bg-red-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-all shadow">O'chirish</button>
+                    </td>
                 `;
                 tbody.appendChild(row);
             });
         }
 
-        // Hodisalar (Listeners)
         document.getElementById('teacher-filter').addEventListener('change', renderAttendance);
         document.getElementById('search-input').addEventListener('input', renderAttendance);
         document.getElementById('date-filter').addEventListener('change', renderAttendance);
 
-        // Excelga export qilish
         document.getElementById('export-btn').addEventListener('click', () => {
             if (allAttendance.length === 0) {
                 alert("Yuklab olish uchun ma'lumot yo'q!");

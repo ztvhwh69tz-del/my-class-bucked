@@ -8,7 +8,7 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Статик papkani ulash (frontend fayllar shu yerda bo'lishi kerak)
+// Статик papkani ulash
 app.use(express.static(path.join(__dirname, 'public')));
 
 const server = http.createServer(app);
@@ -17,9 +17,9 @@ const io = new Server(server, {
 });
 
 let attendanceRecords = [];
-let naryadRecords = []; // Naryadga tushgan o'quvchilar ro'yxati
-let students = []; // O'quvchilar ro'yxati
-let teachers = []; // O'qituvchilar ro'yxati (Login va parollar bilan)
+let naryadRecords = []; 
+let students = []; 
+let teachers = []; // O'qituvchilar (Login va parollar bilan)
 
 // 7 kundan eski ma'lumotlarni tozalash
 function cleanOldRecords() {
@@ -37,7 +37,6 @@ function cleanOldRecords() {
 // --- DAVOMAT API ---
 app.post('/api/attendance', (req, res) => {
     const data = req.body; 
-    
     const teacher = (data.teacher_name || '').trim();
     const group = (data.group_name || '').trim();
     const student = (data.student_name || '').trim();
@@ -54,9 +53,7 @@ app.post('/api/attendance', (req, res) => {
 
     cleanOldRecords();
     io.emit('live_attendance', data);
-
-    console.log("--> Davomat yangilandi:", data);
-    res.status(250).json({ success: true });
+    res.status(200).json({ success: true });
 });
 
 app.get('/api/attendance', (req, res) => {
@@ -64,21 +61,29 @@ app.get('/api/attendance', (req, res) => {
     res.json(attendanceRecords);
 });
 
-// --- NARYADCHILAR API (Yangi qo'shildi) ---
+// Davomat yozuvini o'chirish
+app.delete('/api/attendance/:unique_id', (req, res) => {
+    const { unique_id } = req.params;
+    const index = attendanceRecords.findIndex(r => r.unique_id === unique_id);
+    if (index === -1) {
+        return res.status(404).json({ success: false, message: "Ma'lumot topilmadi" });
+    }
+    attendanceRecords.splice(index, 1);
+    io.emit('attendance_deleted', unique_id);
+    res.json({ success: true });
+});
+
+// --- NARYADCHILAR API ---
 app.post('/api/naryad', (req, res) => {
     const data = req.body;
     const naryadRecord = {
-        unique_id: Date.now().toString(),
+        unique_id: `naryad_${Date.now()}_${Math.random()}`,
         ...data
     };
     
     naryadRecords.unshift(naryadRecord);
     cleanOldRecords();
-    
-    // Direktor paneliga jonli uzatish uchun
     io.emit('live_naryad', naryadRecord);
-
-    console.log("--> Naryadga qo'shildi:", naryadRecord);
     res.status(200).json({ success: true });
 });
 
@@ -87,7 +92,19 @@ app.get('/api/naryad', (req, res) => {
     res.json(naryadRecords);
 });
 
-// --- O'QITUVCHILAR LOGIN / REGISTRATION API (Yangi qo'shildi) ---
+// Naryad yozuvini o'chirish
+app.delete('/api/naryad/:unique_id', (req, res) => {
+    const { unique_id } = req.params;
+    const index = naryadRecords.findIndex(r => r.unique_id === unique_id);
+    if (index === -1) {
+        return res.status(404).json({ success: false, message: "Ma'lumot topilmadi" });
+    }
+    naryadRecords.splice(index, 1);
+    io.emit('naryad_deleted', unique_id);
+    res.json({ success: true });
+});
+
+// --- O'QITUVCHILAR API ---
 app.post('/api/teachers/register', (req, res) => {
     const { login, password, time } = req.body;
     if (!login) {
@@ -108,7 +125,6 @@ app.post('/api/teachers/register', (req, res) => {
         existing.password = password ? password.trim() : existing.password;
     }
 
-    console.log("--> O'qituvchi kirdi/saqlandi:", login);
     res.status(200).json({ success: true });
 });
 
@@ -116,34 +132,15 @@ app.get('/api/teachers', (req, res) => {
     res.json(teachers);
 });
 
-// --- O'QUVCHILAR API ---
-app.get('/api/students', (req, res) => {
-    res.json(students);
-});
-
-app.post('/api/students', (req, res) => {
-    const { name, group_name } = req.body;
-    if (!name) {
-        return res.status(400).json({ success: false, message: "O'quvchi ismi kiritilmadi" });
-    }
-    const newStudent = {
-        id: Date.now().toString(),
-        name: name.trim(),
-        group_name: (group_name || '').trim()
-    };
-    students.push(newStudent);
-    io.emit('student_added', newStudent); 
-    res.status(201).json({ success: true, student: newStudent });
-});
-
-app.delete('/api/students/:id', (req, res) => {
+// O'qituvchini o'chirish
+app.delete('/api/teachers/:id', (req, res) => {
     const { id } = req.params;
-    const index = students.findIndex(s => s.id === id);
+    const index = teachers.findIndex(t => t.id === id || t.login === id);
     if (index === -1) {
-        return res.status(404).json({ success: false, message: "O'quvchi topilmadi" });
+        return res.status(404).json({ success: false, message: "O'qituvchi topilmadi" });
     }
-    const deleted = students.splice(index, 1)[0];
-    io.emit('student_deleted', id);
+    const deleted = teachers.splice(index, 1)[0];
+    io.emit('teacher_deleted', id);
     res.json({ success: true, deleted });
 });
 
