@@ -16,10 +16,8 @@ const io = new Server(server, {
     cors: { origin: "*" }
 });
 
-// Ma'lumotlarni faylda saqlash uchun fayl yo'li
 const DB_FILE = path.join(__dirname, 'database.json');
 
-// Bazani o'qish funksiyasi
 function loadDatabase() {
     try {
         if (fs.existsSync(DB_FILE)) {
@@ -29,10 +27,9 @@ function loadDatabase() {
     } catch (e) {
         console.error("Bazani o'qishda xatolik:", e);
     }
-    return { attendanceRecords: [], naryadRecords: [], teachers: [], students: [] };
+    return { attendanceRecords: [], naryadRecords: [], teachers: [], groups: {} };
 }
 
-// Bazaga yozish funksiyasi
 function saveDatabase(db) {
     try {
         fs.writeFileSync(DB_FILE, JSON.stringify(db, null, 2), 'utf8');
@@ -41,13 +38,29 @@ function saveDatabase(db) {
     }
 }
 
-// 7 kundan eski ma'lumotlarni tozalash va saqlash
 function cleanAndSave(db) {
     const oneWeekAgo = Date.now() - (7 * 24 * 60 * 60 * 1000);
     db.attendanceRecords = db.attendanceRecords.filter(item => new Date(item.time).getTime() >= oneWeekAgo);
     db.naryadRecords = db.naryadRecords.filter(item => new Date(item.time).getTime() >= oneWeekAgo);
     saveDatabase(db);
 }
+
+// --- GURUH VA O'QUVCHILARNI SAQLASH API (Yangi) ---
+app.get('/api/groups/:teacher', (req, res) => {
+    const db = loadDatabase();
+    const teacher = req.params.teacher.trim().toLowerCase();
+    res.json(db.groups[teacher] || []);
+});
+
+app.post('/api/groups/:teacher', (req, res) => {
+    const db = loadDatabase();
+    const teacher = req.params.teacher.trim().toLowerCase();
+    const groups = req.body.groups;
+    
+    db.groups[teacher] = groups;
+    saveDatabase(db);
+    res.status(200).json({ success: true });
+});
 
 // --- DAVOMAT API ---
 app.post('/api/attendance', (req, res) => {
@@ -121,7 +134,7 @@ app.post('/api/teachers/register', (req, res) => {
     const { login, password, time } = req.body;
     if (!login) return res.status(400).json({ success: false, message: "Login kiritilmadi" });
 
-    let existing = db.teachers.find(t => t.login === login.trim());
+    let existing = db.teachers.find(t => t.login.toLowerCase() === login.trim().toLowerCase());
     if (!existing) {
         const newTeacher = {
             id: Date.now().toString(),
@@ -146,7 +159,7 @@ app.post('/api/teachers', (req, res) => {
     const { login, password } = req.body;
     if (!login || !password) return res.status(400).json({ success: false, message: "Login va parol kiritilishi shart" });
 
-    if (db.teachers.some(t => t.login === login.trim())) {
+    if (db.teachers.some(t => t.login.toLowerCase() === login.trim().toLowerCase())) {
         return res.status(400).json({ success: false, message: "Bu login band!" });
     }
 
