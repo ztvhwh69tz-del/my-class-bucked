@@ -3,7 +3,7 @@ const http = require('http');
 const { Server } = require('socket.io');
 const cors = require('cors');
 const path = require('path');
-const fs = require('fs');
+const mongoose = require('mongoose');
 
 const app = express();
 app.use(cors());
@@ -16,179 +16,236 @@ const io = new Server(server, {
     cors: { origin: "*" }
 });
 
-const DB_FILE = path.join(__dirname, 'database.json');
+// --- MONGODB GA ULANISH ---
+// MONGO_URI o'rniga o'zhavolangizni yozing yoki Render environment variable'ga qo'shing
+const MONGO_URI = process.env.MONGO_URI || "SIZNING_MONGODB_CONNECTION_STRING_MANZILINGIZ";
 
-function loadDatabase() {
+mongoose.connect(MONGO_URI)
+    .then(() => console.log("MongoDB ga muvaffaqiyatli ulandi!"))
+    .catch(err => console.error("MongoDB ulanishda xatolik:", err));
+
+// --- SCHEMALAR VA MODELLAR ---
+const teacherSchema = new mongoose.Schema({
+    login: { type: String, required: true, unique: true, lowercase: true, trim: true },
+    password: { type: String, required: true },
+    time: { type: Date, default: Date.now }
+});
+const Teacher = mongoose.model('Teacher', teacherSchema);
+
+const attendanceSchema = new mongoose.Schema({
+    unique_id: { type: String, required: true, unique: true },
+    teacher_name: String,
+    group_name: String,
+    student_name: String,
+    time: Date
+}, { strict: false });
+const Attendance = mongoose.model('Attendance', attendanceSchema);
+
+const naryadSchema = new mongoose.Schema({
+    unique_id: { type: String, required: true, unique: true },
+    time: Date
+}, { strict: false });
+const Naryad = mongoose.model('Naryad', naryadSchema);
+
+const groupSchema = new mongoose.Schema({
+    teacher: { type: String, required: true, unique: true, lowercase: true, trim: true },
+    groups: { type: mongoose.Schema.Types.Mixed, default: [] }
+});
+const GroupData = mongoose.model('GroupData', groupSchema);
+
+
+// --- GURUH VA O'QUVCHILARNI SAQLASH API ---
+app.get('/api/groups/:teacher', async (req, res) => {
     try {
-        if (fs.existsSync(DB_FILE)) {
-            const data = fs.readFileSync(DB_FILE, 'utf8');
-            return JSON.parse(data);
-        }
-    } catch (e) {
-        console.error("Bazani o'qishda xatolik:", e);
+        const teacher = req.params.teacher.trim().toLowerCase();
+        const record = await GroupData.findOne({ teacher });
+        res.json(record ? record.groups : []);
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
     }
-    return { attendanceRecords: [], naryadRecords: [], teachers: [], groups: {} };
-}
-
-function saveDatabase(db) {
-    try {
-        fs.writeFileSync(DB_FILE, JSON.stringify(db, null, 2), 'utf8');
-    } catch (e) {
-        console.error("Bazani yozishda xatolik:", e);
-    }
-}
-
-function cleanAndSave(db) {
-    const oneWeekAgo = Date.now() - (7 * 24 * 60 * 60 * 1000);
-    db.attendanceRecords = db.attendanceRecords.filter(item => new Date(item.time).getTime() >= oneWeekAgo);
-    db.naryadRecords = db.naryadRecords.filter(item => new Date(item.time).getTime() >= oneWeekAgo);
-    saveDatabase(db);
-}
-
-// --- GURUH VA O'QUVCHILARNI SAQLASH API (Yangi) ---
-app.get('/api/groups/:teacher', (req, res) => {
-    const db = loadDatabase();
-    const teacher = req.params.teacher.trim().toLowerCase();
-    res.json(db.groups[teacher] || []);
 });
 
-app.post('/api/groups/:teacher', (req, res) => {
-    const db = loadDatabase();
-    const teacher = req.params.teacher.trim().toLowerCase();
-    const groups = req.body.groups;
-    
-    db.groups[teacher] = groups;
-    saveDatabase(db);
-    res.status(200).json({ success: true });
+app.post('/api/groups/:teacher', async (req, res) => {
+    try {
+        const teacher = req.params.teacher.trim().toLowerCase();
+        const groups = req.body.groups;
+        
+        await GroupData.findOneAndUpdate(
+            { teacher },
+            { groups },
+            { upsert: true, new: true }
+        );
+        res.status(200).json({ success: true });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
 });
 
 // --- DAVOMAT API ---
-app.post('/api/attendance', (req, res) => {
-    const db = loadDatabase();
-    const data = req.body; 
-    const teacher = (data.teacher_name || '').trim();
-    const group = (data.group_name || '').trim();
-    const student = (data.student_name || '').trim();
-    
-    const recordDate = new Date(data.time).toISOString().split('T')[0];
-    data.unique_id = `${teacher}_${group}_${student}_${recordDate}`;
+app.post('/api/attendance', async (req, res) => {
+    try {
+        const data = req.body; 
+        const teacher = (data.teacher_name || '').trim();
+        const group = (data.group_name || '').trim();
+        const student = (data.student_name || '').trim();
+        
+        const recordDate = new Date(data.time).toISOString().split('T')[0];
+        data.unique_id = `${teacher}_${group}_${student}_${recordDate}`;
 
-    const existingIndex = db.attendanceRecords.findIndex(r => r.unique_id === data.unique_id);
-    if (existingIndex !== -1) {
-        db.attendanceRecords[existingIndex] = data; 
-    } else {
-        db.attendanceRecords.push(data); 
+        const updated = await Attendance.findOneAndUpdate(
+            { unique_id: data.unique_id },
+            data,
+            { upsert: true, new: true }
+        );
+
+        io.emit('live_attendance', updated);
+        res.status(200).json({ success: true });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
     }
-
-    cleanAndSave(db);
-    io.emit('live_attendance', data);
-    res.status(200).json({ success: true });
 });
 
-app.get('/api/attendance', (req, res) => {
-    const db = loadDatabase();
-    res.json(db.attendanceRecords);
+app.get('/api/attendance', async (req, res) => {
+    try {
+        const records = await Attendance.find();
+        res.json(records);
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
 });
 
-app.delete('/api/attendance/:unique_id', (req, res) => {
-    const db = loadDatabase();
-    const { unique_id } = req.params;
-    const index = db.attendanceRecords.findIndex(r => r.unique_id === unique_id);
-    if (index === -1) return res.status(404).json({ success: false, message: "Topilmadi" });
-    db.attendanceRecords.splice(index, 1);
-    saveDatabase(db);
-    io.emit('attendance_deleted', unique_id);
-    res.json({ success: true });
+app.delete('/api/attendance/:unique_id', async (req, res) => {
+    try {
+        const { unique_id } = req.params;
+        const deleted = await Attendance.findOneAndDelete({ unique_id });
+        if (!deleted) return res.status(404).json({ success: false, message: "Topilmadi" });
+        
+        io.emit('attendance_deleted', unique_id);
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
 });
 
 // --- NARYADCHILAR API ---
-app.post('/api/naryad', (req, res) => {
-    const db = loadDatabase();
-    const data = req.body;
-    const naryadRecord = { unique_id: `naryad_${Date.now()}_${Math.random()}`, ...data };
-    db.naryadRecords.unshift(naryadRecord);
-    cleanAndSave(db);
-    io.emit('live_naryad', naryadRecord);
-    res.status(200).json({ success: true });
+app.post('/api/naryad', async (req, res) => {
+    try {
+        const data = req.body;
+        const unique_id = `naryad_${Date.now()}_${Math.random()}`;
+        const naryadRecord = new Naryad({ unique_id, ...data });
+        await naryadRecord.save();
+
+        io.emit('live_naryad', naryadRecord);
+        res.status(200).json({ success: true });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
 });
 
-app.get('/api/naryad', (req, res) => {
-    const db = loadDatabase();
-    res.json(db.naryadRecords);
+app.get('/api/naryad', async (req, res) => {
+    try {
+        const records = await Naryad.find().sort({ _id: -1 });
+        res.json(records);
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
 });
 
-app.delete('/api/naryad/:unique_id', (req, res) => {
-    const db = loadDatabase();
-    const { unique_id } = req.params;
-    const index = db.naryadRecords.findIndex(r => r.unique_id === unique_id);
-    if (index === -1) return res.status(404).json({ success: false, message: "Topilmadi" });
-    db.naryadRecords.splice(index, 1);
-    saveDatabase(db);
-    io.emit('naryad_deleted', unique_id);
-    res.json({ success: true });
+app.delete('/api/naryad/:unique_id', async (req, res) => {
+    try {
+        const { unique_id } = req.params;
+        const deleted = await Naryad.findOneAndDelete({ unique_id });
+        if (!deleted) return res.status(404).json({ success: false, message: "Topilmadi" });
+        
+        io.emit('naryad_deleted', unique_id);
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
 });
 
 // --- O'QITUVCHILAR API ---
-app.post('/api/teachers/register', (req, res) => {
-    const db = loadDatabase();
-    const { login, password, time } = req.body;
-    if (!login) return res.status(400).json({ success: false, message: "Login kiritilmadi" });
+app.post('/api/teachers/register', async (req, res) => {
+    try {
+        const { login, password, time } = req.body;
+        if (!login) return res.status(400).json({ success: false, message: "Login kiritilmadi" });
 
-    let existing = db.teachers.find(t => t.login.toLowerCase() === login.trim().toLowerCase());
-    if (!existing) {
-        const newTeacher = {
-            id: Date.now().toString(),
-            login: login.trim(),
-            password: password ? password.trim() : '',
-            time: time || new Date().toISOString()
-        };
-        db.teachers.push(newTeacher);
-        saveDatabase(db);
-        io.emit('teacher_added', newTeacher);
-    } else {
-        if (password) {
-            existing.password = password.trim();
-            saveDatabase(db);
+        const cleanLogin = login.trim().toLowerCase();
+        let existing = await Teacher.findOne({ login: cleanLogin });
+
+        if (!existing) {
+            const newTeacher = new Teacher({
+                login: login.trim(),
+                password: password ? password.trim() : '',
+                time: time || new Date()
+            });
+            await newTeacher.save();
+            io.emit('teacher_added', newTeacher);
+        } else {
+            if (password) {
+                existing.password = password.trim();
+                await existing.save();
+            }
         }
+        res.status(200).json({ success: true });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
     }
-    res.status(200).json({ success: true });
 });
 
-app.post('/api/teachers', (req, res) => {
-    const db = loadDatabase();
-    const { login, password } = req.body;
-    if (!login || !password) return res.status(400).json({ success: false, message: "Login va parol kiritilishi shart" });
+app.post('/api/teachers', async (req, res) => {
+    try {
+        const { login, password } = req.body;
+        if (!login || !password) return res.status(400).json({ success: false, message: "Login va parol kiritilishi shart" });
 
-    if (db.teachers.some(t => t.login.toLowerCase() === login.trim().toLowerCase())) {
-        return res.status(400).json({ success: false, message: "Bu login band!" });
+        const cleanLogin = login.trim().toLowerCase();
+        const exists = await Teacher.findOne({ login: cleanLogin });
+        if (exists) {
+            return res.status(400).json({ success: false, message: "Bu login band!" });
+        }
+
+        const newTeacher = new Teacher({
+            login: login.trim(),
+            password: password.trim(),
+            time: new Date()
+        });
+        await newTeacher.save();
+        io.emit('teacher_added', newTeacher);
+        res.status(201).json({ success: true, teacher: newTeacher });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
     }
-
-    const newTeacher = {
-        id: Date.now().toString(),
-        login: login.trim(),
-        password: password.trim(),
-        time: new Date().toISOString()
-    };
-    db.teachers.push(newTeacher);
-    saveDatabase(db);
-    io.emit('teacher_added', newTeacher);
-    res.status(201).json({ success: true, teacher: newTeacher });
 });
 
-app.get('/api/teachers', (req, res) => {
-    const db = loadDatabase();
-    res.json(db.teachers);
+app.get('/api/teachers', async (req, res) => {
+    try {
+        const teachers = await Teacher.find();
+        res.json(teachers);
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
 });
 
-app.delete('/api/teachers/:id', (req, res) => {
-    const db = loadDatabase();
-    const { id } = req.params;
-    const index = db.teachers.findIndex(t => t.id === id || t.login === id);
-    if (index === -1) return res.status(404).json({ success: false, message: "O'qituvchi topilmadi" });
-    db.teachers.splice(index, 1);
-    saveDatabase(db);
-    io.emit('teacher_deleted', id);
-    res.json({ success: true });
+app.delete('/api/teachers/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        let deleted = null;
+        
+        // MongoDB _id bo'yicha yoki login bo'yicha o'chirish
+        if (id.length === 24 && /^[0-9a-fA-F]{24}$/.test(id)) {
+            deleted = await Teacher.findByIdAndDelete(id);
+        }
+        if (!deleted) {
+            deleted = await Teacher.findOneAndDelete({ login: id });
+        }
+        
+        if (!deleted) return res.status(404).json({ success: false, message: "O'qituvchi topilmadi" });
+        
+        io.emit('teacher_deleted', id);
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
 });
 
 const PORT = process.env.PORT || 3000;
