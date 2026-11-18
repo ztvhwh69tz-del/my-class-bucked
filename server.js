@@ -17,7 +17,6 @@ const io = new Server(server, {
 });
 
 // --- MONGODB GA ULANISH ---
-// MONGO_URI o'rniga o'z havolangizni yozing yoki Render environment variable'ga qo'shing
 const MONGO_URI = process.env.MONGO_URI || "SIZNING_MONGODB_CONNECTION_STRING_MANZILINGIZ";
 
 mongoose.connect(MONGO_URI)
@@ -217,7 +216,7 @@ app.post('/api/teachers', async (req, res) => {
     }
 });
 
-app.get('/api/teachers', async (req, res) => {
+app.get('/api/teachers', async (resourceReq, res) => {
     try {
         const teachers = await Teacher.find();
         res.json(teachers);
@@ -228,29 +227,41 @@ app.get('/api/teachers', async (req, res) => {
 
 app.delete('/api/teachers/:id', async (req, res) => {
     try {
-        const { id } = req.params;
+        let { id } = req.params;
+        id = decodeURIComponent(id).trim(); // URL'dagi maxsus belgilarni to'g'ri o'qish uchun
         let deleted = null;
         
-        // MongoDB _id bo'yicha yoki login bo'yicha o'chirish
+        // 1. MongoDB _id bo'yicha qidirib o'chirish
         if (id.length === 24 && /^[0-9a-fA-F]{24}$/.test(id)) {
             deleted = await Teacher.findByIdAndDelete(id);
         }
+        
+        // 2. Agar topilmasa, login bo'yicha qidirib o'chirish
         if (!deleted) {
-            deleted = await Teacher.findOneAndDelete({ login: new RegExp('^' + id + '$', 'i') });
+            deleted = await Teacher.findOneAndDelete({ 
+                login: { $regex: new RegExp('^' + id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '$', 'i') } 
+            });
         }
         
-        if (!deleted) return res.status(404).json({ success: false, message: "O'qituvchi topilmadi" });
+        if (!deleted) {
+            return res.status(404).json({ success: false, message: "O'qituvchi bazadan topilmadi" });
+        }
         
         const teacherLogin = deleted.login.trim().toLowerCase();
 
-        // O'qituvchining bazadagi guruhlari va davomat ma'lumotlarini o'chirish
-        await GroupData.deleteMany({ teacher: teacherLogin });
+        // --- BAZADAGI BARCHA BOG'LANGAN MA'LUMOTLARNI TOZALASH ---
+        await GroupData.deleteMany({ 
+            teacher: { $regex: new RegExp('^' + teacherLogin.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '$', 'i') } 
+        });
+        
         await Attendance.deleteMany({ 
-            teacher_name: { $regex: new RegExp('^' + teacherLogin + '$', 'i') } 
+            teacher_name: { $regex: new RegExp('^' + teacherLogin.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '$', 'i') } 
         });
 
+        // Barcha ulangan klientlarga (WebSocket orqali) xabar berish
         io.emit('teacher_deleted', id);
-        res.json({ success: true, message: "O'qituvchi va unga tegishli barcha ma'lumotlar o'chirildi" });
+        
+        res.json({ success: true, message: "O'qituvchi va unga tegishli barcha guruhlar hamda davomatlar bazadan o'chirildi" });
     } catch (err) {
         res.status(500).json({ success: false, message: err.message });
     }
