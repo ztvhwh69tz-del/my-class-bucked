@@ -17,7 +17,7 @@ const io = new Server(server, {
 });
 
 // --- MONGODB GA ULANISH ---
-// MONGO_URI o'rniga o'zhavolangizni yozing yoki Render environment variable'ga qo'shing
+// MONGO_URI o'rniga o'z havolangizni yozing yoki Render environment variable'ga qo'shing
 const MONGO_URI = process.env.MONGO_URI || "SIZNING_MONGODB_CONNECTION_STRING_MANZILINGIZ";
 
 mongoose.connect(MONGO_URI)
@@ -236,13 +236,21 @@ app.delete('/api/teachers/:id', async (req, res) => {
             deleted = await Teacher.findByIdAndDelete(id);
         }
         if (!deleted) {
-            deleted = await Teacher.findOneAndDelete({ login: id });
+            deleted = await Teacher.findOneAndDelete({ login: new RegExp('^' + id + '$', 'i') });
         }
         
         if (!deleted) return res.status(404).json({ success: false, message: "O'qituvchi topilmadi" });
         
+        const teacherLogin = deleted.login.trim().toLowerCase();
+
+        // O'qituvchining bazadagi guruhlari va davomat ma'lumotlarini o'chirish
+        await GroupData.deleteMany({ teacher: teacherLogin });
+        await Attendance.deleteMany({ 
+            teacher_name: { $regex: new RegExp('^' + teacherLogin + '$', 'i') } 
+        });
+
         io.emit('teacher_deleted', id);
-        res.json({ success: true });
+        res.json({ success: true, message: "O'qituvchi va unga tegishli barcha ma'lumotlar o'chirildi" });
     } catch (err) {
         res.status(500).json({ success: false, message: err.message });
     }
