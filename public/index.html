@@ -47,7 +47,7 @@
 
         <!-- 1-BO'LIM: O'QITUVCHILAR -->
         <div id="tab-teachers" class="tab-content space-y-6">
-            <!-- Yangi o'qituvchi qo'shishformasi -->
+            <!-- Yangi o'qituvchi qo'shish formasi -->
             <div class="bg-slate-900/60 border border-slate-800 p-5 rounded-2xl shadow-xl">
                 <h3 class="text-md font-bold text-teal-400 mb-3">Yangi o'qituvchi qo'shish</h3>
                 <form id="add-teacher-form" class="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -226,7 +226,7 @@
             renderTeachers();
         });
         socket.on('teacher_deleted', (id) => {
-            allTeachers = allTeachers.filter(t => t.id !== id && t.login !== id);
+            allTeachers = allTeachers.filter(t => t._id !== id && t.login !== id);
             renderTeachers();
         });
 
@@ -283,19 +283,29 @@
             });
         });
 
-        function deleteTeacher(id) {
-            if (!confirm("Haqiqatdan ham bu o'qituvchini o'chirmoqchimisiz?")) return;
-            fetch(`/api/teachers/${id}`, { method: 'DELETE' });
+        // TO'G'RILANDI: t._id yoki t.login yuboriladigan qilindi
+        function deleteTeacher(teacherIdOrLogin) {
+            if (!confirm("Haqiqatdan ham bu o'qituvchini va unga tegishli barcha guruhlar va davomatlarni o'chirmoqchimisiz?")) return;
+            fetch(`/api/teachers/${encodeURIComponent(teacherIdOrLogin)}`, { method: 'DELETE' })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        loadData(); // Ma'lumotlarni yangilash
+                    } else {
+                        alert(data.message || "O'chirishda xatolik");
+                    }
+                })
+                .catch(err => console.error("Xatolik:", err));
         }
 
         function deleteAttendance(unique_id) {
             if (!confirm("Haqiqatdan ham bu yozuvni o'chirmoqchimisiz?")) return;
-            fetch(`/api/attendance/${unique_id}`, { method: 'DELETE' });
+            fetch(`/api/attendance/${unique_id}`, { method: 'DELETE' }).then(() => loadData());
         }
 
         function deleteNaryad(unique_id) {
             if (!confirm("Haqiqatdan ham bu naryad yozuvini o'chirmoqchimisiz?")) return;
-            fetch(`/api/naryad/${unique_id}`, { method: 'DELETE' });
+            fetch(`/api/naryad/${unique_id}`, { method: 'DELETE' }).then(() => loadData());
         }
 
         function renderTeachers() {
@@ -311,12 +321,14 @@
             allTeachers.forEach(t => {
                 const row = document.createElement('tr');
                 row.className = 'hover:bg-slate-800/40 transition-colors';
+                // TO'G'RILANDI: t._id orqali o'chirishga yuborish
+                const identifier = t._id || t.login;
                 row.innerHTML = `
                     <td class="p-4 font-bold text-white">${t.login}</td>
                     <td class="p-4 font-mono text-teal-400">${t.password || 'Kiritilmagan'}</td>
                     <td class="p-4 text-slate-400 text-xs">${new Date(t.time).toLocaleString()}</td>
                     <td class="p-4 text-right">
-                        <button onclick="deleteTeacher('${t.id}')" class="bg-red-600/80 hover:bg-red-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-all shadow">O'chirish</button>
+                        <button onclick="deleteTeacher('${identifier}')" class="bg-red-600/80 hover:bg-red-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-all shadow">O'chirish</button>
                     </td>
                 `;
                 tbody.appendChild(row);
@@ -352,7 +364,6 @@
             document.getElementById('stat-excused').textContent = excused;
 
             const filtered = allAttendance.filter(item => {
-                if (item.status === "Darsda bor" && currentStatusFilter === 'ALL' && !searchText) return false;
                 const itemDate = new Date(item.time).toISOString().split('T')[0];
                 const matchTeacher = !selectedTeacher || item.teacher_name === selectedTeacher;
                 const matchStatus = currentStatusFilter === 'ALL' || item.status === currentStatusFilter;
@@ -381,8 +392,8 @@
                     <td class="p-4 font-medium text-slate-200">${data.teacher_name || 'Noma\'lum'}</td>
                     <td class="p-4 text-slate-300">${data.group_name || 'Noma\'lum'}</td>
                     <td class="p-4 font-bold text-white">${data.student_name}</td>
-                    <td class="p-4 text-slate-300 text-xs">Pasport: <b class="text-teal-400">${data.passport_number}</b><br>JSHSHR: <b class="text-teal-400">${data.jshshr}</b></td>
-                    <td class="p-4 text-slate-300">${data.phone_number}</td>
+                    <td class="p-4 text-slate-300 text-xs">Pasport: <b class="text-teal-400">${data.passport_number || '-'}</b><br>JSHSHR: <b class="text-teal-400">${data.jshshr || '-'}</b></td>
+                    <td class="p-4 text-slate-300">${data.phone_number || '-'}</td>
                     <td class="p-4"><span class="px-3 py-1 rounded-full text-xs border ${statusColor}">${data.status}</span></td>
                     <td class="p-4 text-slate-400 text-xs">${new Date(data.time).toLocaleString()}</td>
                     <td class="p-4 text-right">
@@ -407,13 +418,12 @@
                 const row = document.createElement('tr');
                 row.className = 'hover:bg-slate-800/40 transition-colors';
                 row.innerHTML = `
-                    <p>...</p>
                     <td class="p-4 font-medium text-slate-200">${item.teacher_name || 'Noma\'lum'}</td>
                     <td class="p-4 text-slate-300">${item.group_name || 'Noma\'lum'}</td>
                     <td class="p-4 font-bold text-white">${item.student_name}</td>
-                    <td class="p-4 text-slate-300 text-xs">Pasport: <b class="text-teal-400">${item.passport_number}</b><br>JSHSHR: <b class="text-teal-400">${item.jshshr}</b></td>
-                    <td class="p-4 text-slate-300">${item.phone_number}</td>
-                    <td class="p-4 text-red-400 font-bold text-xs">${new Date(item.naryad_end_date).toLocaleString()}</td>
+                    <td class="p-4 text-slate-300 text-xs">Pasport: <b class="text-teal-400">${item.passport_number || '-'}</b><br>JSHSHR: <b class="text-teal-400">${item.jshshr || '-'}</b></td>
+                    <td class="p-4 text-slate-300">${item.phone_number || '-'}</td>
+                    <td class="p-4 text-red-400 font-bold text-xs">${item.naryad_end_date ? new Date(item.naryad_end_date).toLocaleString() : '-'}</td>
                     <td class="p-4 text-right">
                         <button onclick="deleteNaryad('${item.unique_id}')" class="bg-red-600/80 hover:bg-red-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-all shadow">O'chirish</button>
                     </td>
